@@ -17,60 +17,114 @@ WORD wokWindowAttributes = (HACKER_MODE) ? 0b00001010 : 0b00001111;
 WORD inactiveItemAttributes = 31;
 WORD activeItemAttributes = 160;
 
+COORD inputLine;
+
 const int navigationItemsAmount = 2;  // Navigation items count
 const int maxNavItemsInRow = 3;
 
 const char smallPadding[2] = " ";  // Space between title and description
 const char widePadding[3] = "  ";  // Space between items
 
-void buildGUI() {
+int mainWindowHeight;
+int mainWindowWidth;
+int navigationItemWidth;
+
+COORD sourceArea_start;  // Source area is a left one
+COORD targetArea_start;  // Target area is on the right
+int workingArea_height;  // They are the same height
+
+NAVIGATION_ITEM navigation[navigationItemsAmount] = {
+        { 1, 0, "Ctrl + N" ,"Create new file" },
+        { 31, 0, "Ctrl + D", "Delete file" },
+};
+
+void configureConsole(){
     hStdOut = GetStdHandle(STD_OUTPUT_HANDLE);
     SetConsoleTextAttribute(hStdOut, wokWindowAttributes);
     GetConsoleScreenBufferInfo(hStdOut, &csbInfo);
     consoleRect = csbInfo.srWindow;
 
-    int columns = 100;
-    int rows = 40;
-    int navHeight = 2;  // Menu higth (rows)
-
-    // position (col, row), title, description, handler
-    NAVIGATION_ITEM navigation[navigationItemsAmount] = {
-            { 1, 0, "Ctrl + N" ,"Create new file" },
-            { 31, 0, "Ctrl + D", "Delete file" },
-    };
-    navigationMap selectedItem = FIRST;  // Selected element
-
+    // TODO - read width / height of console
     //    int columns = csbInfo.srWindow.Right - csbInfo.srWindow.Left + 1;
     //    int rows = csbInfo.srWindow.Bottom - csbInfo.srWindow.Top + 1;
 
-    int currentRow = 0;
-    for (; currentRow != rows - navHeight - 2; currentRow++) {  // 2 rows for dividers
-        setCursorPosition(columns / 2, currentRow);
-        cout << '|';
-    }
-    setCursorPosition(0, currentRow);
-    for (int i=0; i != columns; i++){
-        cout << '-';
-    }
-    setCursorPosition(0, ++currentRow);
-    cout << "Input:";
-    setCursorPosition(0, ++currentRow);
-    for (int i=0; i != columns; i++){
-        cout << '-';
-    }
+    mainWindowWidth = 100;
+    mainWindowHeight = 40;
 
+    // Count item width
+    NAVIGATION_ITEM item = navigation[0];
+    navigationItemWidth = sizeof(item.title) + sizeof(item.description) + sizeof(smallPadding) + sizeof(widePadding);
+
+    // Count available working area width (mind dividers!)
+    workingArea_height = int(maxNavItemsInRow / navigationItemsAmount) + 1 + 3;  // +1 - navigation width, +3 - dividers
+    workingArea_height -= 1; // Another divider between two areas
+    workingArea_height = int(workingArea_height);
+}
+
+void buildGUI() {
+    // position (col, row), title, description, handler
+    int currentRow = 0;
+    if (mainWindowHeight < 10){
+        cout << "Your window is too small...\n";
+        system("pause");
+        exit(-1);
+    }
+    // ------------------------------------------------------------------------------------------------ Navigation items
     for (int itemIndex = 0; itemIndex != navigationItemsAmount; itemIndex++) {  // Draw navigation
         if (!(itemIndex % maxNavItemsInRow))  currentRow ++;  // Max items in row - go to next row
         NAVIGATION_ITEM item = navigation[itemIndex];
-        // Count item width
-        int itemWidth = sizeof(item.title) + sizeof(item.description) + sizeof(smallPadding) + sizeof(widePadding);
-        setCursorPosition(itemIndex * itemWidth, currentRow);
+        setCursorPosition(itemIndex * navigationItemWidth, currentRow);
         cout << item.title << smallPadding << item.description << widePadding;
     }
 
 
+    // ------------------------------------------------------------------------------------------------ Divider
+    currentRow++;
+    setCursorPosition(0, currentRow);
+    for (int i = 0; i != mainWindowWidth; i++){
+        cout << '-';
+    }
+
+
+    currentRow += workingArea_height;
+
+
+    // ------------------------------------------------------------------------------------------------ Divider
+    currentRow++;
+    setCursorPosition(0, currentRow);
+    for (int i = 0; i != mainWindowWidth; i++){
+        cout << '-';
+    }
+
+
+
+    currentRow += workingArea_height;
+
+
+    // ------------------------------------------------------------------------------------------------ Divider
+    currentRow++;
+    setCursorPosition(0, currentRow);
+    for (int i = 0; i != mainWindowWidth; i++){
+        cout << '-';
+    }
+
+
+
+
+    // ------------------------------------------------------------------------------------------------------ Input line
+    currentRow++;
+    setCursorPosition(0, currentRow);
+    cout << ':';
+
+
+
+
+    const short inputLineRow = currentRow;  // Save input line coordinates
+    inputLine = {inputLineRow, 1};
+
     cout << '\n';
     system("pause");
+    exit(0);
 }
 
 // Sets cursor position
