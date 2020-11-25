@@ -22,23 +22,34 @@ COORD inputLine;
 const int navigationItemsAmount = 2;  // Navigation items count
 const int maxNavItemsInRow = 3;
 
-const char smallPadding[2] = " ";  // Space between title and description
-const char widePadding[3] = "  ";  // Space between items
+const char applicationTitle[30] = "[TFM] Terminal File Manager";
+const char widePadding[5] = "    ";  // Space between items
 
 int mainWindowHeight;
 int mainWindowWidth;
-int navigationItemWidth;
+int globalCursorCol; // Cursor column
+int globalCursorRow; // Cursor row
 
-COORD sourceArea_start;  // Source area is a left one
-COORD targetArea_start;  // Target area is on the right
-int workingArea_height;  // They are the same height
+int inputLineRow;  // Input line row
+int sourceAreaStart;  // Source area is a on the top
+int sourceAreaEnd;
+int targetAreaStart;  // Target area is at the bottom
+int targetAreaEnd;
+
+// TODO - remove ---------
+char baseSourcePath[100] = "/test/subtest/subsubtest";
+char baseTargetPath[100] = "/test/subtest/subsubtest";
+// TODO - remove ---------
+
+
+int workingAreaHeight;  // They are the same height
 
 NAVIGATION_ITEM navigation[navigationItemsAmount] = {
-        { 1, 0, "Ctrl + N" ,"Create new file" },
-        { 31, 0, "Ctrl + D", "Delete file" },
+        {1,  0, "Ctrl + N", "Create new file"},
+        {31, 0, "Ctrl + D", "Delete file"},
 };
 
-void configureConsole(){
+void configureConsole() {
     hStdOut = GetStdHandle(STD_OUTPUT_HANDLE);
     SetConsoleTextAttribute(hStdOut, wokWindowAttributes);
     GetConsoleScreenBufferInfo(hStdOut, &csbInfo);
@@ -48,83 +59,76 @@ void configureConsole(){
     //    int columns = csbInfo.srWindow.Right - csbInfo.srWindow.Left + 1;
     //    int rows = csbInfo.srWindow.Bottom - csbInfo.srWindow.Top + 1;
 
-    mainWindowWidth = 100;
     mainWindowHeight = 40;
+    mainWindowWidth = 100;
+    workingAreaHeight = 10;
 
-    // Count item width
-    NAVIGATION_ITEM item = navigation[0];
-    navigationItemWidth = sizeof(item.title) + sizeof(item.description) + sizeof(smallPadding) + sizeof(widePadding);
+    inputLineRow = 1 + workingAreaHeight + 1 + workingAreaHeight + 1;  // Input line row
+    sourceAreaStart = 2;  // Source area is a on the top
+    sourceAreaEnd = sourceAreaStart + workingAreaHeight;
+    targetAreaStart = sourceAreaStart + 1;  // Target area is at the bottom
+    targetAreaEnd = targetAreaStart + workingAreaHeight;
 
-    // Count available working area width (mind dividers!)
-    workingArea_height = int(maxNavItemsInRow / navigationItemsAmount) + 1 + 3;  // +1 - navigation width, +3 - dividers
-    workingArea_height -= 1; // Another divider between two areas
-    workingArea_height = int(workingArea_height);
+    globalCursorCol = 0; // Cursor column
+    globalCursorRow = 0; // Cursor row
 }
 
 void buildGUI() {
     // position (col, row), title, description, handler
-    int currentRow = 0;
-    if (mainWindowHeight < 10){
+    if (mainWindowHeight < 10) {
         cout << "Your window is too small...\n";
         system("pause");
         exit(-1);
     }
+
+    // ------------------------------------------------------------------------------------------------ Divider
+    cout << applicationTitle;
+    globalCursorRow++;
+    setCursorPosition(0, globalCursorRow);
+    for (int i = 0; i != mainWindowWidth; i++) {
+        cout << ((baseSourcePath[i] == NULL) ? '-' : baseSourcePath[i]);
+    }
+    globalCursorRow += workingAreaHeight;
+    // ------------------------------------------------------------------------------------------------ Divider
+    globalCursorRow++;
+    setCursorPosition(0, globalCursorRow);
+    for (int i = 0; i != mainWindowWidth; i++) {
+        cout << ((baseTargetPath[i] == NULL) ? '-' : baseTargetPath[i]);
+    }
+
+    globalCursorRow += workingAreaHeight;
+    // ------------------------------------------------------------------------------------------------ Divider
+    globalCursorRow++;
+    setCursorPosition(0, globalCursorRow);
+    for (int i = 0; i != mainWindowWidth; i++) {
+        cout << '-';
+    }
+    // ------------------------------------------------------------------------------------------------------ Input line
+    globalCursorRow++;
+    setCursorPosition(0, globalCursorRow);
+    cout << "cmd:";
+
     // ------------------------------------------------------------------------------------------------ Navigation items
     for (int itemIndex = 0; itemIndex != navigationItemsAmount; itemIndex++) {  // Draw navigation
-        if (!(itemIndex % maxNavItemsInRow))  currentRow ++;  // Max items in row - go to next row
+        if (!(itemIndex % maxNavItemsInRow)) globalCursorRow++;  // Max items in row - go to next row
         NAVIGATION_ITEM item = navigation[itemIndex];
-        setCursorPosition(itemIndex * navigationItemWidth, currentRow);
-        cout << item.title << smallPadding << item.description << widePadding;
+        setCursorPosition(0, globalCursorRow++);
+        cout << item.title << widePadding << item.description;
     }
-
-
-    // ------------------------------------------------------------------------------------------------ Divider
-    currentRow++;
-    setCursorPosition(0, currentRow);
-    for (int i = 0; i != mainWindowWidth; i++){
-        cout << '-';
-    }
-
-
-    currentRow += workingArea_height;
-
-
-    // ------------------------------------------------------------------------------------------------ Divider
-    currentRow++;
-    setCursorPosition(0, currentRow);
-    for (int i = 0; i != mainWindowWidth; i++){
-        cout << '-';
-    }
-
-
-
-    currentRow += workingArea_height;
-
-
-    // ------------------------------------------------------------------------------------------------ Divider
-    currentRow++;
-    setCursorPosition(0, currentRow);
-    for (int i = 0; i != mainWindowWidth; i++){
-        cout << '-';
-    }
-
-
-
-
-    // ------------------------------------------------------------------------------------------------------ Input line
-    currentRow++;
-    setCursorPosition(0, currentRow);
-    cout << ':';
-
-
-
-
-    const short inputLineRow = currentRow;  // Save input line coordinates
-    inputLine = {inputLineRow, 1};
 
     cout << '\n';
     system("pause");
     exit(0);
+}
+
+void fillWorkingArea(TFM_FILE *files) {
+    globalCursorRow = sourceAreaStart;
+    setCursorPosition(0, globalCursorRow);  // Set cursor at source area start
+    for (int i = 0; i != workingAreaHeight; i++) {
+        TFM_FILE f = files[i];
+        cout << f.title << widePadding << f.lastChange;
+        globalCursorRow++;
+    }
 }
 
 // Sets cursor position
