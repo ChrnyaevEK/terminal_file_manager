@@ -24,9 +24,13 @@ TFM_FILE files[100] = {
         {"o", "15"},
         {"p", "16"},
 };  // File collection
-int main()
-{
-    configureConsole();
-    buildGUI();
-    fillWorkingArea(files);
-}
+//int main()
+//{
+//    configureConsole();
+////    buildGUI();
+////    fillWorkingArea(files);
+//    listenKeyboard();
+//    cout << '\n';
+//    system("pause");
+//    exit(0);
+//}

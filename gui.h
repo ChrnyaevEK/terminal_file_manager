@@ -18,9 +18,6 @@ typedef struct {  // Navigation item
 extern HANDLE hStdOut;
 extern SMALL_RECT consoleRect; // Corner coordinates
 
-extern int globalCursorCol; // Cursor column
-extern int globalCursorRow; // Cursor row
-
 extern CONSOLE_SCREEN_BUFFER_INFO csbInfo; // Information about console window
 extern WORD wokWindowAttributes;
 extern WORD inactiveItemAttributes;  // Inactive navigation item
@@ -62,5 +59,4 @@ void configureConsole();
 void setCursorPosition(short col, short row); // Move caret to col row
 void handleUserInput();  // Should return user input
 void clear(bool navigationOnly);  // Clear console, if navigationOnly - do not clear the user info, only navigation area
-void getCursorPosition();  // Set cursorPosition global variable
-void showCursor(bool visible);  // Show / hide cursor
+void listenKeyboard();
