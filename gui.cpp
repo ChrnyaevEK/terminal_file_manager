@@ -8,122 +8,102 @@
 #include "gui.h"
 
 using namespace std;
-enum navigationMap {
-    FIRST, SECOND
-};
 
 HANDLE hStdOut;
-SMALL_RECT consoleRect; // Corner coordinates
+HANDLE hStdin;
 CONSOLE_SCREEN_BUFFER_INFO csbInfo; // Information about console window
 COORD cursorPosition = {0, 1}; // Cursor coordinate
 WORD wokWindowAttributes = (HACKER_MODE) ? 0b00001010 : 0b00001111;
 WORD inactiveItemAttributes = 31;
 WORD activeItemAttributes = 160;
 
-COORD inputLine;
+const char DIM::applicationTitle[30] = "[TFM] Terminal File Manager";
+int DIM::mainWindowHeight;
+int DIM::workingAreaHeight;  // They are the same height
+int DIM::mainWindowWidth;
+DIM::COORD DIM::inputLine;  // Input line row
+DIM::AREA DIM::sourceArea;  // Source area is a on the top
+DIM::AREA DIM::targetArea;  // Target area is at the bottom
 
-const int navigationItemsAmount = 2;  // Navigation items count
-const int maxNavItemsInRow = 3;
+int STATE::sourceFileIndex;
+char *STATE::sourcePath;
+int STATE::targetFileIndex;
+char *STATE::targetPath;
+bool STATE::exit = false;
 
-const char applicationTitle[30] = "[TFM] Terminal File Manager";
-const char widePadding[5] = "    ";  // Space between items
-
-int mainWindowHeight;
-int mainWindowWidth;
-
-int inputLineRow;  // Input line row
-int sourceAreaStart;  // Source area is a on the top
-int sourceAreaEnd;
-int targetAreaStart;  // Target area is at the bottom
-int targetAreaEnd;
-
-// TODO - remove ---------
-char baseSourcePath[100] = "/test/subtest/subsubtest";
-char baseTargetPath[100] = "/test/subtest/subsubtest";
-// TODO - remove ---------
-
-
-int workingAreaHeight;  // They are the same height
-
-NAVIGATION_ITEM navigation[navigationItemsAmount] = {
+NAVIGATION_ITEM navigation[] = {
         {1,  0, "Ctrl + N", "Create new file"},
         {31, 0, "Ctrl + D", "Delete file"},
 };
 
 void configureConsole() {
+    hStdin = GetStdHandle(STD_INPUT_HANDLE);
     hStdOut = GetStdHandle(STD_OUTPUT_HANDLE);
     SetConsoleTextAttribute(hStdOut, wokWindowAttributes);
     GetConsoleScreenBufferInfo(hStdOut, &csbInfo);
-    consoleRect = csbInfo.srWindow;
+    if (hStdin == INVALID_HANDLE_VALUE)
+        errorExit("GetStdHandle");
 
-    // TODO - read width / height of console
-    //    int columns = csbInfo.srWindow.Right - csbInfo.srWindow.Left + 1;
-    //    int rows = csbInfo.srWindow.Bottom - csbInfo.srWindow.Top + 1;
+    // Enable the window and mouse input events.
+    if (!SetConsoleMode(hStdin, ENABLE_WINDOW_INPUT | ENABLE_MOUSE_INPUT | ENABLE_INSERT_MODE | ENABLE_EXTENDED_FLAGS))
+        errorExit("SetConsoleMode");
 
-    mainWindowHeight = 40;
-    mainWindowWidth = 100;
-    workingAreaHeight = 10;
+    DIM::mainWindowHeight = csbInfo.srWindow.Right - csbInfo.srWindow.Left + 1;
+    DIM::mainWindowWidth = csbInfo.srWindow.Bottom - csbInfo.srWindow.Top + 1;
+    DIM::workingAreaHeight = 10;
 
-    inputLineRow = 1 + workingAreaHeight + 1 + workingAreaHeight + 1;  // Input line row
-    sourceAreaStart = 2;  // Source area is a on the top
-    sourceAreaEnd = sourceAreaStart + workingAreaHeight;
-    targetAreaStart = sourceAreaEnd + 1;  // Target area is at the bottom
-    targetAreaEnd = targetAreaStart + workingAreaHeight;
+    DIM::inputLine = {1 + DIM::workingAreaHeight + 1 + DIM::workingAreaHeight + 1, 0};  // Input line
+    DIM::sourceArea = {2, short (2 + DIM::sourceArea.START)};  // Source area is a on the top
+    DIM::targetArea = {DIM::sourceArea.END + 1, DIM::sourceArea.END + 1 + DIM::workingAreaHeight };  // Target area is at the bottom
 }
 
 void buildGUI() {
+    int cursorRow = 0;
 
-    int cursorCol = 0; // Cursor column
-    int cursorRow = 0; // Cursor row
-    // position (col, row), title, description, handler
-    if (mainWindowHeight < 10) {
-        cout << "Your window is too small...\n";
-        system("pause");
-        exit(-1);
-    }
+    if (DIM::mainWindowHeight < 10) errorExit("Your window is too small...\n");
 
     // ------------------------------------------------------------------------------------------------ Divider
-    cout << applicationTitle;
+    cout << DIM::applicationTitle;
+
     cursorRow++;
     setCursorPosition(0, cursorRow);
-    for (int i = 0; i != mainWindowWidth; i++) {
-        cout << ((baseSourcePath[i] == NULL) ? '-' : baseSourcePath[i]);
+    for (int i = 0; i != DIM::mainWindowWidth; i++) {
+        cout << ((STATE::sourcePath[i] == NULL) ? '-' : STATE::sourcePath[i]);
     }
-    cursorRow += workingAreaHeight;
+    cursorRow += DIM::workingAreaHeight;
+
     // ------------------------------------------------------------------------------------------------ Divider
     cursorRow++;
     setCursorPosition(0, cursorRow);
-    for (int i = 0; i != mainWindowWidth; i++) {
-        cout << ((baseTargetPath[i] == NULL) ? '-' : baseTargetPath[i]);
+    for (int i = 0; i != DIM::mainWindowWidth; i++) {
+        cout << ((STATE::targetPath[i] == NULL) ? '-' : STATE::targetPath[i]);
     }
 
-    cursorRow += workingAreaHeight;
+    cursorRow += DIM::workingAreaHeight;
     // ------------------------------------------------------------------------------------------------ Divider
     cursorRow++;
     setCursorPosition(0, cursorRow);
-    for (int i = 0; i != mainWindowWidth; i++) {
-        cout << '-';
-    }
+    for (int i = 0; i != DIM::mainWindowWidth; i++) { cout << '-'; }
     // ------------------------------------------------------------------------------------------------------ Input line
     cursorRow++;
     setCursorPosition(0, cursorRow);
     cout << "cmd:";
 
     // ------------------------------------------------------------------------------------------------ Navigation items
-    for (int itemIndex = 0; itemIndex != navigationItemsAmount; itemIndex++) {  // Draw navigation
-        if (!(itemIndex % maxNavItemsInRow)) cursorRow++;  // Max items in row - go to next row
+    for (int itemIndex = 0; itemIndex != size(navigation); itemIndex++) {  // Draw navigation
         NAVIGATION_ITEM item = navigation[itemIndex];
         setCursorPosition(0, cursorRow++);
-        cout << item.title << widePadding << item.description;
+        cout << item.title << "     " << item.description;
     }
 }
 
-void fillWorkingArea(TFM_FILE *files) {
-    for (int i = 0; i != workingAreaHeight; i++) {
-        setCursorPosition(0, sourceAreaStart + i);  // Set cursor at source area start
-        if (NULL == &files[i]) break;
-        TFM_FILE f = files[i];
-        printf("%-50s%s", f.title, f.lastChange);
+void fillWorkingArea(TFM_FILE *files, DIM::AREA area) {
+    for (int i = area.START; i != area.END; i++) {
+        setCursorPosition(0, area.START + i);  // Set cursor at source area start
+        if (NULL != &files[i]) {
+            TFM_FILE f = files[i];
+            printf("%-50s%s", f.title, f.lastChange);
+        }
     }
 }
 
@@ -132,155 +112,40 @@ void setCursorPosition(short col, short row) {
     SetConsoleCursorPosition(hStdOut, COORD{col, row});
 }
 
-void clear(bool navigationOnly) {
-    //int i;
-    //string s(80, ' ');
-    //SetConsoleTextAttribute(hStdOut, woкkWindowAttributes);
-    //if (it == 0) gotoxy(0, consolRect.Top + 1);
-    //else gotoxy(0, consolRect.Top);
-    //for (i = consolRect.Top; i < curspos.Y + 1; i++)
-    //	cout << s.c_str();
-    //gotoxy(0, 0);
+void errorExit(LPCSTR Message) {
+    printf("%s\n", Message);
+    system("pause");
+    exit(0);
 }
 
-void listenKeyboard() {
-
-}
-
-HANDLE hStdin;
-DWORD fdwSaveOldMode;
-
-VOID ErrorExit(LPCSTR);
-
-VOID KeyEventProc(KEY_EVENT_RECORD);
-
-VOID MouseEventProc(MOUSE_EVENT_RECORD);
-
-VOID ResizeEventProc(WINDOW_BUFFER_SIZE_RECORD);
-
-int main(VOID) {
-    DWORD cNumRead, fdwMode, i;
-    INPUT_RECORD irInBuf[128];
-    int counter = 0;
-
-    // Get the standard input handle.
-
-    hStdin = GetStdHandle(STD_INPUT_HANDLE);
-    if (hStdin == INVALID_HANDLE_VALUE)
-        ErrorExit("GetStdHandle");
-
-    // Save the current input mode, to be restored on exit.
-
-    if (!GetConsoleMode(hStdin, &fdwSaveOldMode))
-        ErrorExit("GetConsoleMode");
-
-    // Enable the window and mouse input events.
-
-    fdwMode = ENABLE_WINDOW_INPUT | ENABLE_MOUSE_INPUT | ENABLE_INSERT_MODE | ENABLE_EXTENDED_FLAGS;
-    if (!SetConsoleMode(hStdin, fdwMode))
-        ErrorExit("SetConsoleMode");
-
-    // Loop to read and handle the next 500 input events.
-
-    while (counter++ <= 500) {
-        // Wait for the events.
-
-        if (!ReadConsoleInput(
-                hStdin,      // input buffer handle
-                irInBuf,     // buffer to read into
-                128,         // size of read buffer
-                &cNumRead)) // number of records read
-            ErrorExit("ReadConsoleInput");
-
-        // Dispatch the events to the appropriate handler.
-
-        for (i = 0; i < cNumRead; i++) {
-            switch (irInBuf[i].EventType) {
-                case KEY_EVENT: // keyboard input
-                    KeyEventProc(irInBuf[i].Event.KeyEvent);
+void keyEventProc(KEY_EVENT_RECORD ker) {
+    // https://docs.microsoft.com/ru-ru/windows/win32/inputdev/virtual-key-codes?redirectedfrom=MSDN
+    // https://docs.microsoft.com/en-us/windows/console/key-event-record-str
+    if (!ker.bKeyDown) {
+        if (ker.dwControlKeyState == SHIFT_PRESSED) {
+            switch (ker.wVirtualKeyCode) {
+                case 0x53:  // SHIFT + S (source)
+                    // Process source area path
                     break;
-
-                case MOUSE_EVENT: // mouse input
-                    MouseEventProc(irInBuf[i].Event.MouseEvent);
+                case 0x54:  // SHIFT + T (target)
+                    // Process target area path
                     break;
-
-                case WINDOW_BUFFER_SIZE_EVENT: // scrn buf. resizing
-                    ResizeEventProc(irInBuf[i].Event.WindowBufferSizeEvent);
+                case 0x4E:  // SHIFT + N (new)
+                    // Create file in selected are
                     break;
-
-                case FOCUS_EVENT:  // disregard focus events
-
-                case MENU_EVENT:   // disregard menu events
+                case 0x41:  // SHIFT + A (area)
+                    // switch working area ()
                     break;
-
-                default:
-                    ErrorExit("Unknown event type");
+            }
+        } else if (ker.dwControlKeyState == LEFT_CTRL_PRESSED) {
+            switch (ker.wVirtualKeyCode) {
+                case VK_UP:  // CTRL + Arrow up
+                    // Move file selection up
+                    break;
+                case VK_DOWN:  // CTRL + Arrow down
+                    // Move file selection down
                     break;
             }
         }
     }
-
-    // Restore input mode on exit.
-
-    SetConsoleMode(hStdin, fdwSaveOldMode);
-
-    return 0;
-}
-
-VOID ErrorExit(LPCSTR lpszMessage) {
-    fprintf(stderr, "%s\n", lpszMessage);
-
-    // Restore input mode on exit.
-
-    SetConsoleMode(hStdin, fdwSaveOldMode);
-
-    ExitProcess(0);
-}
-
-VOID KeyEventProc(KEY_EVENT_RECORD ker) {
-    printf("Key event: ");
-
-    if (ker.bKeyDown)
-        printf("key pressed\n");
-    else printf("key released\n");
-}
-
-VOID MouseEventProc(MOUSE_EVENT_RECORD mer) {
-#ifndef MOUSE_HWHEELED
-#define MOUSE_HWHEELED 0x0008
-#endif
-    printf("Mouse event: ");
-
-    switch (mer.dwEventFlags) {
-        case 0:
-
-            if (mer.dwButtonState == FROM_LEFT_1ST_BUTTON_PRESSED) {
-                printf("left button press \n");
-            } else if (mer.dwButtonState == RIGHTMOST_BUTTON_PRESSED) {
-                printf("right button press \n");
-            } else {
-                printf("button press\n");
-            }
-            break;
-        case DOUBLE_CLICK:
-            printf("double click\n");
-            break;
-        case MOUSE_HWHEELED:
-            printf("horizontal mouse wheel\n");
-            break;
-        case MOUSE_MOVED:
-            printf("mouse moved\n");
-            break;
-        case MOUSE_WHEELED:
-            printf("vertical mouse wheel\n");
-            break;
-        default:
-            printf("unknown\n");
-            break;
-    }
-}
-
-VOID ResizeEventProc(WINDOW_BUFFER_SIZE_RECORD wbsr) {
-    printf("Resize event\n");
-    printf("Console screen buffer is %d columns by %d rows.\n", wbsr.dwSize.X, wbsr.dwSize.Y);
 }
