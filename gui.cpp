@@ -25,39 +25,41 @@ DIM::COORD DIM::inputLine;  // Input line row
 DIM::AREA DIM::sourceArea;  // Source area is a on the top
 DIM::AREA DIM::targetArea;  // Target area is at the bottom
 
-int STATE::sourceFileIndex;
-char *STATE::sourcePath;
-int STATE::targetFileIndex;
-char *STATE::targetPath;
-bool STATE::exit = false;
 
 NAVIGATION_ITEM navigation[] = {
-        {1,  0, "Ctrl + N", "Create new file"},
-        {31, 0, "Ctrl + D", "Delete file"},
+        {"SHIFT + S", "Change source path"},
+        {"SHIFT + T", "Change target path"},
+        {"SHIFT + N", "Create file in selected area"},
+        {"SHIFT + A", "Switch working area"},
 };
+
+void doDimensions() {
+    GetConsoleScreenBufferInfo(hStdOut, &csbInfo);
+    DIM::mainWindowWidth = csbInfo.srWindow.Right - csbInfo.srWindow.Left + 1;
+    DIM::mainWindowHeight = csbInfo.srWindow.Bottom - csbInfo.srWindow.Top + 1;
+    DIM::workingAreaHeight = int((DIM::mainWindowHeight - 4 - size(navigation)) / 2);
+
+    DIM::inputLine = {1, 1 + DIM::workingAreaHeight + 1 + DIM::workingAreaHeight + 1};  // Input line
+    DIM::sourceArea = {2, short(2 + DIM::workingAreaHeight)};  // Source area is a on the top
+    DIM::targetArea = {DIM::sourceArea.END + 1,
+                       DIM::sourceArea.END + 1 + DIM::workingAreaHeight};  // Target area is at the bottom
+}
 
 void configureConsole() {
     hStdin = GetStdHandle(STD_INPUT_HANDLE);
     hStdOut = GetStdHandle(STD_OUTPUT_HANDLE);
-    SetConsoleTextAttribute(hStdOut, wokWindowAttributes);
     GetConsoleScreenBufferInfo(hStdOut, &csbInfo);
+    SetConsoleTextAttribute(hStdOut, wokWindowAttributes);
     if (hStdin == INVALID_HANDLE_VALUE)
         errorExit("GetStdHandle");
 
     // Enable the window and mouse input events.
     if (!SetConsoleMode(hStdin, ENABLE_WINDOW_INPUT | ENABLE_MOUSE_INPUT | ENABLE_INSERT_MODE | ENABLE_EXTENDED_FLAGS))
-        errorExit("SetConsoleMode");
-
-    DIM::mainWindowHeight = csbInfo.srWindow.Right - csbInfo.srWindow.Left + 1;
-    DIM::mainWindowWidth = csbInfo.srWindow.Bottom - csbInfo.srWindow.Top + 1;
-    DIM::workingAreaHeight = 10;
-
-    DIM::inputLine = {1 + DIM::workingAreaHeight + 1 + DIM::workingAreaHeight + 1, 0};  // Input line
-    DIM::sourceArea = {2, short (2 + DIM::sourceArea.START)};  // Source area is a on the top
-    DIM::targetArea = {DIM::sourceArea.END + 1, DIM::sourceArea.END + 1 + DIM::workingAreaHeight };  // Target area is at the bottom
+        errorExit("Could not do SetConsoleMode");
 }
 
 void buildGUI() {
+    clear();
     int cursorRow = 0;
 
     if (DIM::mainWindowHeight < 10) errorExit("Your window is too small...\n");
@@ -87,7 +89,7 @@ void buildGUI() {
     // ------------------------------------------------------------------------------------------------------ Input line
     cursorRow++;
     setCursorPosition(0, cursorRow);
-    cout << "cmd:";
+    cout << ":";
 
     // ------------------------------------------------------------------------------------------------ Navigation items
     for (int itemIndex = 0; itemIndex != size(navigation); itemIndex++) {  // Draw navigation
@@ -95,14 +97,15 @@ void buildGUI() {
         setCursorPosition(0, cursorRow++);
         cout << item.title << "     " << item.description;
     }
+    fillWorkingArea(files, DIM::sourceArea);
 }
 
 void fillWorkingArea(TFM_FILE *files, DIM::AREA area) {
     for (int i = area.START; i != area.END; i++) {
-        setCursorPosition(0, area.START + i);  // Set cursor at source area start
+        setCursorPosition(0, i);  // Set cursor at source area start
         if (NULL != &files[i]) {
             TFM_FILE f = files[i];
-            printf("%-50s%s", f.title, f.lastChange);
+            printf("%-10s changed: %s", f.title, f.lastChange);
         }
     }
 }
@@ -110,6 +113,15 @@ void fillWorkingArea(TFM_FILE *files, DIM::AREA area) {
 // Sets cursor position
 void setCursorPosition(short col, short row) {
     SetConsoleCursorPosition(hStdOut, COORD{col, row});
+}
+
+void stdMsgOut(LPCSTR Message) {
+    setCursorPosition(DIM::inputLine.COL, DIM::inputLine.ROW);
+    printf("%s\n", Message);
+}
+
+void clear() {
+    system("cls"); // clear console
 }
 
 void errorExit(LPCSTR Message) {

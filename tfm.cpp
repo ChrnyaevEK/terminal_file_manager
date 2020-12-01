@@ -6,30 +6,16 @@
 #include "core.h"
 
 using namespace std;
-TFM_FILE files[100] = {
-        {"a", "1"},
-        {"b", "2"},
-        {"c", "3"},
-        {"d", "4"},
-        {"e", "5"},
-        {"f", "6"},
-        {"g", "7"},
-        {"h", "8"},
-        {"i", "9"},
-        {"j", "10"},
-        {"k", "11"},
-        {"l", "12"},
-        {"m", "13"},
-        {"n", "14"},
-        {"o", "15"},
-        {"p", "16"},
-};  // File collection
-int main()
-{
+
+
+int main() {
     DWORD cNumRead, i;
     INPUT_RECORD irInBuf[128];
 
     configureConsole(); // Configure console attributes and count dimensions
+    configureSystem();
+    doDimensions();
+    buildGUI();
 
     // Loop to read and handle the next 500 input events.
     while (true) {
@@ -46,10 +32,16 @@ int main()
             switch (irInBuf[i].EventType) {
                 case KEY_EVENT: // keyboard input
                     keyEventProc(irInBuf[i].Event.KeyEvent);
+                    doDimensions();
+                    buildGUI();
                     break;
 
-                case MOUSE_EVENT: // disregard mouse input
+
                 case WINDOW_BUFFER_SIZE_EVENT: // disregard scrn buf. resizing
+                    doDimensions();
+                    buildGUI();
+                    break;
+                case MOUSE_EVENT: // disregard mouse input
                 case FOCUS_EVENT:  // disregard focus events
                 case MENU_EVENT:   // disregard menu events
                     break;
