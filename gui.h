@@ -1,15 +1,17 @@
 #pragma once
 #define HACKER_MODE true
+#include <windows.h>
+#include <iostream>
+#include <string>
+#include <cstdio>
 
-typedef void(*FUN)(); // Navigation function pointer
 typedef struct {  // Navigation item
     const char title[10];  //  Keyboard shortcut to use
     const char description[30]; // Navigation button action description
-    //    FUN handler;  // Handler  TODO - bind handler
 } NAVIGATION_ITEM;
 
 
-namespace DIM {
+namespace DIM {  // Info about DIMentions and sizes
     extern int mainWindowHeight;
     extern int mainWindowWidth;
     extern const char applicationTitle[30];  // Space between items
@@ -26,7 +28,6 @@ namespace DIM {
     extern int workingAreaHeight;
 }
 
-
 extern HANDLE hStdOut;
 extern HANDLE hStdin;
 
@@ -41,12 +42,13 @@ void fillWorkingArea();
 
 void cleanWorkingArea();
 
-
 void configureConsole();
 
 void doDimensions();
 
 void clear();
+
+void refresh();
 
 void setCursorPosition(short col, short row); // Move caret to col row
 

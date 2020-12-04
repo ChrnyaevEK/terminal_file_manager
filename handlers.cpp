@@ -1,64 +1,65 @@
 #include "handlers.h"
-#include <windows.h>
 #include <iostream>
 #include <string>
 #include <cstdio>
 #include "gui.h"
+#include "core.h"
 #include <direct.h>
 
 using namespace std;
 
-void changeWorkingDirectory() {
-    string path;
-    setCursorPosition(DIM::inputLine.COL, DIM::inputLine.ROW);
+void changeWorkingDirectory() {  // Move to directory
+    string path;  // Hold new path
+    setCursorPosition(DIM::inputLine.COL, DIM::inputLine.ROW);  // Move cursor
     stdMsgOut("Enter path: ");
-    cin >> path;
-    if (_chdir(path.c_str())) {
-        stdMsgOut("Error - path not found!");
+    cin >> path;  // Get path
+    errno_t err = _chdir(path.c_str());
+    refresh();
+    if (err) {  // Change dir.
+        stdMsgOut("Error - path not found!");  // Error
     } else {
-        stdMsgOut("OK");
+        stdMsgOut("OK");  // Success
     }
 }
 
-void createNewFile() {
-    string name;
-    FILE *infile;
+void createNewFile() {  // Create new file
+    string name;  // Hold name
+    FILE *infile;  // File pointer to close file
     setCursorPosition(DIM::inputLine.COL, DIM::inputLine.ROW);
     stdMsgOut("Enter file name: ");
-    cin >> name;
+    cin >> name;  // Get name
     errno_t err = fopen_s(&infile, name.c_str(), "w+");
-    if (err) {
+    refresh();
+    if (err) {  // Error
         stdMsgOut("Error! Could not create file...");
-    } else {
-        fclose(infile);
+    } else {  // Ok
+        fclose(infile);  // Close file
         stdMsgOut("OK");
     }
 }
 
 void removeFile() {
-    string name;
+    string name;  // Hold name
     setCursorPosition(DIM::inputLine.COL, DIM::inputLine.ROW);
     stdMsgOut("Enter file name: ");
-    cin >> name;
-    errno_t err = remove(name.c_str());
-    if (err) {
+    cin >> name;  // Get name
+    errno_t err = remove(name.c_str());  // Remove file
+    refresh();
+    if (err) {  // Error
         stdMsgOut("Error! Could not remove file...");
-    } else {
+    } else {  // Success
         stdMsgOut("OK");
     }
 }
 
 
-void renameFile() {
-    string nameOld;
-    string nameNew;
-    setCursorPosition(DIM::inputLine.COL, DIM::inputLine.ROW);
-    stdMsgOut("Enter old file name: ");
-    cin >> nameOld;
+void renameFile() {  // Renames file
+    string name;  // Holds new name
     setCursorPosition(DIM::inputLine.COL, DIM::inputLine.ROW);
     stdMsgOut("Enter new file name: ");
-    cin >> nameNew;
-    errno_t err = rename(nameOld.c_str(), nameNew.c_str());
+    cin >> name;  // Get new name
+    errno_t err = rename(STATE::files[STATE::files.size() - STATE::fileIndex - 1].c_str(), name.c_str());
+    refresh();
     if (err) {
         stdMsgOut("Error! Could not rename file...");
     } else {

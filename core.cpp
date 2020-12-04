@@ -13,10 +13,11 @@ vector<string> STATE::files;
 
 using namespace std;
 
-void configureSystem() {
-     _getcwd(STATE::path,200);
+void configureSystem() {  // Read files to memory
+    STATE::fileIndex = 0;  // Select first file
+    _getcwd(STATE::path,200);  // Get path
     // https://stackoverflow.com/questions/612097/how-can-i-get-the-list-of-files-in-a-directory-using-c-or-c
-    STATE::files.clear();
+    STATE::files.clear();  // Remove old files from memory
     string search_path = "./*.*";
     WIN32_FIND_DATA fd;
     HANDLE hFind = ::FindFirstFile(search_path.c_str(), &fd);

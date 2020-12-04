@@ -1,7 +1,4 @@
-#include <iostream>
 #include <windows.h>
-#include <conio.h>
-#include <clocale>
 #include "gui.h"
 #include "core.h"
 
@@ -12,13 +9,8 @@ int main() {
     DWORD cNumRead, i;
     INPUT_RECORD irInBuf[128];
 
-    configureConsole(); // Configure console attributes and count dimensions
-    configureSystem();
-    doDimensions();
-    buildGUI();
-    fillWorkingArea();
-    // Loop to read and handle the next 500 input events.
-    while (true) {
+    refresh();  // Show folder
+    while (true) {  // MAIN EVENT LOOP
         // Wait for the events.
         if (!ReadConsoleInput(
                 hStdin,      // input buffer handle
@@ -30,20 +22,16 @@ int main() {
         // Dispatch the events to the appropriate handler.
         for (i = 0; i < cNumRead; i++) {
             switch (irInBuf[i].EventType) {
-                case KEY_EVENT: // keyboard input
+                case KEY_EVENT: // Keyboard input
                     keyEventProc(irInBuf[i].Event.KeyEvent);
                     break;
-
-
-                case WINDOW_BUFFER_SIZE_EVENT: // disregard scrn buf. resizing
-                    doDimensions();
-                    buildGUI();
+                case WINDOW_BUFFER_SIZE_EVENT:  // Window resize
+                    refresh();
                     break;
                 case MOUSE_EVENT: // disregard mouse input
                 case FOCUS_EVENT:  // disregard focus events
                 case MENU_EVENT:   // disregard menu events
                     break;
-
                 default:
                     errorExit("Unknown event type");
                     break;
