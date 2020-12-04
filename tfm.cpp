@@ -14,6 +14,7 @@ int main() {
 
     configureConsole(); // Configure console attributes and count dimensions
     configureSystem();
+    fillFiles();
     doDimensions();
     buildGUI();
 
@@ -32,8 +33,6 @@ int main() {
             switch (irInBuf[i].EventType) {
                 case KEY_EVENT: // keyboard input
                     keyEventProc(irInBuf[i].Event.KeyEvent);
-                    doDimensions();
-                    buildGUI();
                     break;
 
 

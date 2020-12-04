@@ -2,11 +2,6 @@
 #define HACKER_MODE true
 #define DEBUG
 
-
-#define KEY_ARROW_RIGHT 77
-#define KEY_ARROW_LEFT 75
-#define KEY_ENTER 13
-
 typedef void(*FUN)(); // Navigation function pointer
 typedef struct {  // Navigation item
     const char title[10];  //  Keyboard shortcut to use
@@ -28,8 +23,7 @@ namespace DIM {
         int END;
     } AREA;
     extern COORD inputLine;  // Input line
-    extern AREA sourceArea;  // Source area is a on the top
-    extern AREA targetArea;  // Target area is at the bottom
+    extern AREA workingArea;  // Source area is a on the top
     extern int workingAreaHeight;
 }
 
@@ -44,21 +38,19 @@ extern WORD activeItemAttributes;  // Active navigation item
 
 void buildGUI();
 
-void fillWorkingArea(TFM_FILE *files, DIM::AREA area);
+void fillWorkingArea();
+void cleanWorkingArea();
+void changeWorkingDirectory();
 
 void configureConsole();
 
 void doDimensions();
 
 void clear();
+void cleanLine();
 
 void setCursorPosition(short col, short row); // Move caret to col row
-void handleUserInput();  // Should return user input
-void clear(bool navigationOnly);  // Clear console, if navigationOnly - do not clear the user info, only navigation area
-void userInput();
 
 void errorExit(LPCSTR);
 
 void keyEventProc(KEY_EVENT_RECORD);
-
-void mouseEventProc(MOUSE_EVENT_RECORD);

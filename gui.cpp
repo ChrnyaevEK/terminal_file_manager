@@ -2,19 +2,17 @@
 #include <conio.h>
 #include <iostream>
 #include <string>
-#include <tchar.h>
 #include <stdio.h>
 #include "core.h"
 #include "gui.h"
+#include <direct.h>
 
 using namespace std;
-
 HANDLE hStdOut;
 HANDLE hStdin;
 CONSOLE_SCREEN_BUFFER_INFO csbInfo; // Information about console window
 COORD cursorPosition = {0, 1}; // Cursor coordinate
 WORD wokWindowAttributes = (HACKER_MODE) ? 0b00001010 : 0b00001111;
-WORD inactiveItemAttributes = 31;
 WORD activeItemAttributes = 160;
 
 const char DIM::applicationTitle[30] = "[TFM] Terminal File Manager";
@@ -22,8 +20,7 @@ int DIM::mainWindowHeight;
 int DIM::workingAreaHeight;  // They are the same height
 int DIM::mainWindowWidth;
 DIM::COORD DIM::inputLine;  // Input line row
-DIM::AREA DIM::sourceArea;  // Source area is a on the top
-DIM::AREA DIM::targetArea;  // Target area is at the bottom
+DIM::AREA DIM::workingArea;  // Source area is a on the top
 
 
 NAVIGATION_ITEM navigation[] = {
@@ -37,19 +34,16 @@ void doDimensions() {
     GetConsoleScreenBufferInfo(hStdOut, &csbInfo);
     DIM::mainWindowWidth = csbInfo.srWindow.Right - csbInfo.srWindow.Left + 1;
     DIM::mainWindowHeight = csbInfo.srWindow.Bottom - csbInfo.srWindow.Top + 1;
-    DIM::workingAreaHeight = int((DIM::mainWindowHeight - 4 - size(navigation)) / 2);
-
-    DIM::inputLine = {1, 1 + DIM::workingAreaHeight + 1 + DIM::workingAreaHeight + 1};  // Input line
-    DIM::sourceArea = {2, short(2 + DIM::workingAreaHeight)};  // Source area is a on the top
-    DIM::targetArea = {DIM::sourceArea.END + 1,
-                       DIM::sourceArea.END + 1 + DIM::workingAreaHeight};  // Target area is at the bottom
+    DIM::workingAreaHeight = DIM::mainWindowHeight - 4 - size(navigation);
+    DIM::inputLine = {0, short(3 + DIM::workingAreaHeight + size(navigation))};  // Input line
+    DIM::workingArea = {size(navigation) + 3,
+                        short(size(navigation) + 3 + DIM::workingAreaHeight)};  // Source area is a on the top
 }
 
 void configureConsole() {
     hStdin = GetStdHandle(STD_INPUT_HANDLE);
     hStdOut = GetStdHandle(STD_OUTPUT_HANDLE);
     GetConsoleScreenBufferInfo(hStdOut, &csbInfo);
-    SetConsoleTextAttribute(hStdOut, wokWindowAttributes);
     if (hStdin == INVALID_HANDLE_VALUE)
         errorExit("GetStdHandle");
 
@@ -60,53 +54,65 @@ void configureConsole() {
 
 void buildGUI() {
     clear();
+    SetConsoleTextAttribute(hStdOut, wokWindowAttributes);
     int cursorRow = 0;
 
     if (DIM::mainWindowHeight < 10) errorExit("Your window is too small...\n");
 
-    // ------------------------------------------------------------------------------------------------ Divider
-    cout << DIM::applicationTitle;
-
-    cursorRow++;
-    setCursorPosition(0, cursorRow);
-    for (int i = 0; i != DIM::mainWindowWidth; i++) {
-        cout << ((STATE::sourcePath[i] == NULL) ? '-' : STATE::sourcePath[i]);
-    }
-    cursorRow += DIM::workingAreaHeight;
-
-    // ------------------------------------------------------------------------------------------------ Divider
-    cursorRow++;
-    setCursorPosition(0, cursorRow);
-    for (int i = 0; i != DIM::mainWindowWidth; i++) {
-        cout << ((STATE::targetPath[i] == NULL) ? '-' : STATE::targetPath[i]);
-    }
-
-    cursorRow += DIM::workingAreaHeight;
-    // ------------------------------------------------------------------------------------------------ Divider
+    cout << DIM::applicationTitle;  // Title
+    // ------------------------------------------------------------------------------------------------ Navigation items
     cursorRow++;
     setCursorPosition(0, cursorRow);
     for (int i = 0; i != DIM::mainWindowWidth; i++) { cout << '-'; }
-    // ------------------------------------------------------------------------------------------------------ Input line
+    // ------------------------------------------------------------------------------------------------ Divider
     cursorRow++;
     setCursorPosition(0, cursorRow);
-    cout << ":";
-
-    // ------------------------------------------------------------------------------------------------ Navigation items
     for (int itemIndex = 0; itemIndex != size(navigation); itemIndex++) {  // Draw navigation
         NAVIGATION_ITEM item = navigation[itemIndex];
         setCursorPosition(0, cursorRow++);
         cout << item.title << "     " << item.description;
     }
-    fillWorkingArea(files, DIM::sourceArea);
+
+    setCursorPosition(0, cursorRow);
+    for (int i = 0; i != DIM::mainWindowWidth; i++) {
+        cout << ((STATE::path[i] == NULL) ? '-' : STATE::path[i]);
+    }
+    cursorRow += DIM::workingAreaHeight;
+    setCursorPosition(0, cursorRow);
+
+    // ------------------------------------------------------------------------------------------------ Divider
+    for (int i = 0; i != DIM::mainWindowWidth; i++) { cout << '-'; }
+    // ------------------------------------------------------------------------------------------------------ Input line
+    cursorRow++;
+    setCursorPosition(0, cursorRow);  // Input
 }
 
-void fillWorkingArea(TFM_FILE *files, DIM::AREA area) {
-    for (int i = area.START; i != area.END; i++) {
-        setCursorPosition(0, i);  // Set cursor at source area start
-        if (NULL != &files[i]) {
-            TFM_FILE f = files[i];
-            printf("%-10s changed: %s", f.title, f.lastChange);
+void cleanWorkingArea() {
+    SetConsoleTextAttribute(hStdOut, wokWindowAttributes);
+    for (int pos = DIM::workingArea.START; pos != DIM::workingArea.END - 1; pos++) {
+        setCursorPosition(0, pos);  // Set cursor at source area start
+        printf("%c[2K", 27);
+    }
+};
+
+
+void fillWorkingArea() {
+    int pos = DIM::workingArea.START;
+    int wait = STATE::fileIndex;  // TODO -check
+    for (auto ri = STATE::files.rbegin(); ri != STATE::files.rend(); ri++) {
+        if (wait) {
+            wait--;
+            continue;  // Move selected area
         }
+        if (pos == DIM::workingArea.START) {
+            SetConsoleTextAttribute(hStdOut, activeItemAttributes);
+        } else {
+            SetConsoleTextAttribute(hStdOut, wokWindowAttributes);
+        }
+        if (pos >= DIM::workingArea.END - 1) break;
+        setCursorPosition(0, pos);  // Set cursor at source area start
+        printf(" - %s", (*ri).c_str());
+        pos++;
     }
 }
 
@@ -130,32 +136,53 @@ void errorExit(LPCSTR Message) {
     exit(0);
 }
 
+void changeWorkingDirectory() {
+    string path;
+    setCursorPosition(DIM::inputLine.COL, DIM::inputLine.ROW);
+    cout << "Enter path:";
+    cin >> path;
+    if (_chdir(path.c_str())) {
+        cout << "Error!";
+    } else {
+        cleanWorkingArea();
+        configureSystem();
+        fillFiles();
+        fillWorkingArea();
+    }
+}
+
+
+
 void keyEventProc(KEY_EVENT_RECORD ker) {
     // https://docs.microsoft.com/ru-ru/windows/win32/inputdev/virtual-key-codes?redirectedfrom=MSDN
     // https://docs.microsoft.com/en-us/windows/console/key-event-record-str
     if (!ker.bKeyDown) {
-        if (ker.dwControlKeyState == SHIFT_PRESSED) {
+        if (ker.dwControlKeyState & LEFT_CTRL_PRESSED) {
             switch (ker.wVirtualKeyCode) {
-                case 0x53:  // SHIFT + S (source)
-                    // Process source area path
-                    break;
-                case 0x54:  // SHIFT + T (target)
-                    // Process target area path
+                case 0x50:  // CTRL + P (source)
+                    changeWorkingDirectory();
                     break;
                 case 0x4E:  // SHIFT + N (new)
-                    // Create file in selected are
-                    break;
-                case 0x41:  // SHIFT + A (area)
-                    // switch working area ()
+                    // Create file in selected area
                     break;
             }
-        } else if (ker.dwControlKeyState == LEFT_CTRL_PRESSED) {
+        } else {
             switch (ker.wVirtualKeyCode) {
                 case VK_UP:  // CTRL + Arrow up
                     // Move file selection up
+                    if (STATE::fileIndex > 0) {
+                        cleanWorkingArea();
+                        STATE::fileIndex--;
+                        fillWorkingArea();
+                    }
                     break;
                 case VK_DOWN:  // CTRL + Arrow down
                     // Move file selection down
+                    if (STATE::fileIndex >= 0 && STATE::fileIndex < STATE::files.size() - 1) {
+                        cleanWorkingArea();
+                        STATE::fileIndex++;
+                        fillWorkingArea();
+                    }
                     break;
             }
         }
