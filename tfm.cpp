@@ -26,7 +26,9 @@ int main() {
                     keyEventProc(irInBuf[i].Event.KeyEvent);
                     break;
                 case WINDOW_BUFFER_SIZE_EVENT:  // Window resize
-                    refresh();
+                    doDimensions();  // Count sizes
+                    buildGUI();  // Static GUI
+                    fillWorkingArea();  // Files
                     break;
                 case MOUSE_EVENT: // disregard mouse input
                 case FOCUS_EVENT:  // disregard focus events
