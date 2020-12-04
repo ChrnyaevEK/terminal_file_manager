@@ -17,7 +17,7 @@ int main() {
     fillFiles();
     doDimensions();
     buildGUI();
-
+    fillWorkingArea();
     // Loop to read and handle the next 500 input events.
     while (true) {
         // Wait for the events.

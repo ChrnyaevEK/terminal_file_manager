@@ -41,6 +41,9 @@ void buildGUI();
 void fillWorkingArea();
 void cleanWorkingArea();
 void changeWorkingDirectory();
+void createNewFile();
+void removeFile();
+void renameFile();
 
 void configureConsole();
 
@@ -51,6 +54,7 @@ void cleanLine();
 
 void setCursorPosition(short col, short row); // Move caret to col row
 
+void errorMsg(LPCSTR);
 void errorExit(LPCSTR);
 
 void keyEventProc(KEY_EVENT_RECORD);

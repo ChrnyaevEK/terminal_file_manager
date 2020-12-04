@@ -2,7 +2,7 @@
 #include <conio.h>
 #include <iostream>
 #include <string>
-#include <stdio.h>
+#include <cstdio>
 #include "core.h"
 #include "gui.h"
 #include <direct.h>
@@ -74,9 +74,7 @@ void buildGUI() {
     }
 
     setCursorPosition(0, cursorRow);
-    for (int i = 0; i != DIM::mainWindowWidth; i++) {
-        cout << ((STATE::path[i] == NULL) ? '-' : STATE::path[i]);
-    }
+    for (int i = 0; i != DIM::mainWindowWidth; i++) { cout << '-'; }
     cursorRow += DIM::workingAreaHeight;
     setCursorPosition(0, cursorRow);
 
@@ -98,13 +96,16 @@ void cleanWorkingArea() {
 
 void fillWorkingArea() {
     int pos = DIM::workingArea.START;
-    int wait = STATE::fileIndex;  // TODO -check
+    int wait = STATE::fileIndex;
+    setCursorPosition(0, pos++);
+    cout << "Path   ";
+    for (int i = 0; i != DIM::mainWindowWidth; i++) { cout << STATE::path[i]; }
     for (auto ri = STATE::files.rbegin(); ri != STATE::files.rend(); ri++) {
         if (wait) {
             wait--;
             continue;  // Move selected area
         }
-        if (pos == DIM::workingArea.START) {
+        if (pos == DIM::workingArea.START + 1) {
             SetConsoleTextAttribute(hStdOut, activeItemAttributes);
         } else {
             SetConsoleTextAttribute(hStdOut, wokWindowAttributes);
@@ -121,14 +122,21 @@ void setCursorPosition(short col, short row) {
     SetConsoleCursorPosition(hStdOut, COORD{col, row});
 }
 
-void stdMsgOut(LPCSTR Message) {
-    setCursorPosition(DIM::inputLine.COL, DIM::inputLine.ROW);
-    printf("%s\n", Message);
-}
-
 void clear() {
     system("cls"); // clear console
 }
+
+void stdMsgOut(LPCSTR Message) {
+    clear();
+    configureSystem();
+    configureConsole();
+    fillFiles();
+    buildGUI();
+    fillWorkingArea();
+    setCursorPosition(DIM::inputLine.COL, DIM::inputLine.ROW);
+    printf("%s", Message);
+}
+
 
 void errorExit(LPCSTR Message) {
     printf("%s\n", Message);
@@ -136,22 +144,64 @@ void errorExit(LPCSTR Message) {
     exit(0);
 }
 
+
 void changeWorkingDirectory() {
     string path;
     setCursorPosition(DIM::inputLine.COL, DIM::inputLine.ROW);
-    cout << "Enter path:";
+    stdMsgOut("Enter path: ");
     cin >> path;
     if (_chdir(path.c_str())) {
-        cout << "Error!";
+        stdMsgOut("Error - path not found!");
     } else {
-        cleanWorkingArea();
-        configureSystem();
-        fillFiles();
-        fillWorkingArea();
+        stdMsgOut("OK");
+    }
+}
+
+void createNewFile() {
+    string name;
+    FILE *infile;
+    setCursorPosition(DIM::inputLine.COL, DIM::inputLine.ROW);
+    stdMsgOut("Enter file name: ");
+    cin >> name;
+    errno_t err = fopen_s(&infile, name.c_str(), "w+");
+    if (err) {
+        stdMsgOut("Error! Could not create file...");
+    } else {
+        fclose(infile);
+        stdMsgOut("OK");
+    }
+}
+
+void removeFile() {
+    string name;
+    setCursorPosition(DIM::inputLine.COL, DIM::inputLine.ROW);
+    stdMsgOut("Enter file name: ");
+    cin >> name;
+    errno_t err = remove(name.c_str());
+    if (err) {
+        stdMsgOut("Error! Could not remove file...");
+    } else {
+        stdMsgOut("OK");
     }
 }
 
 
+void renameFile() {
+    string nameOld;
+    string nameNew;
+    setCursorPosition(DIM::inputLine.COL, DIM::inputLine.ROW);
+    stdMsgOut("Enter old file name: ");
+    cin >> nameOld;
+    setCursorPosition(DIM::inputLine.COL, DIM::inputLine.ROW);
+    stdMsgOut("Enter new file name: ");
+    cin >> nameNew;
+    errno_t err = rename(nameOld.c_str(), nameNew.c_str());
+    if (err) {
+        stdMsgOut("Error! Could not rename file...");
+    } else {
+        stdMsgOut("OK");
+    }
+}
 
 void keyEventProc(KEY_EVENT_RECORD ker) {
     // https://docs.microsoft.com/ru-ru/windows/win32/inputdev/virtual-key-codes?redirectedfrom=MSDN
@@ -162,8 +212,17 @@ void keyEventProc(KEY_EVENT_RECORD ker) {
                 case 0x50:  // CTRL + P (source)
                     changeWorkingDirectory();
                     break;
-                case 0x4E:  // SHIFT + N (new)
+                case 0x4E:  // CTRL + N (new)
                     // Create file in selected area
+                    createNewFile();
+                    break;
+                case 0x44:  // CTRL + D (delete)
+                    // Delete file
+                    removeFile();
+                    break;
+                case 0x52:  // CTRL + R (rename)
+                    // Rename file
+                    renameFile();
                     break;
             }
         } else {
