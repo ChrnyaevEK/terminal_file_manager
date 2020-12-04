@@ -15,9 +15,6 @@ using namespace std;
 
 void configureSystem() {
      _getcwd(STATE::path,200);
-}
-
-void fillFiles() {
     // https://stackoverflow.com/questions/612097/how-can-i-get-the-list-of-files-in-a-directory-using-c-or-c
     STATE::files.clear();
     string search_path = "./*.*";

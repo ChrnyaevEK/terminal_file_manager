@@ -14,7 +14,6 @@ int main() {
 
     configureConsole(); // Configure console attributes and count dimensions
     configureSystem();
-    fillFiles();
     doDimensions();
     buildGUI();
     fillWorkingArea();

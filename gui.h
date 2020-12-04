@@ -1,6 +1,5 @@
 #pragma once
 #define HACKER_MODE true
-#define DEBUG
 
 typedef void(*FUN)(); // Navigation function pointer
 typedef struct {  // Navigation item
@@ -39,22 +38,20 @@ extern WORD activeItemAttributes;  // Active navigation item
 void buildGUI();
 
 void fillWorkingArea();
+
 void cleanWorkingArea();
-void changeWorkingDirectory();
-void createNewFile();
-void removeFile();
-void renameFile();
+
 
 void configureConsole();
 
 void doDimensions();
 
 void clear();
-void cleanLine();
 
 void setCursorPosition(short col, short row); // Move caret to col row
 
-void errorMsg(LPCSTR);
+void stdMsgOut(LPCSTR);
+
 void errorExit(LPCSTR);
 
 void keyEventProc(KEY_EVENT_RECORD);

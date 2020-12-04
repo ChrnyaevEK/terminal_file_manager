@@ -13,4 +13,3 @@ namespace STATE {
 };
 
 void configureSystem();
-void fillFiles();
