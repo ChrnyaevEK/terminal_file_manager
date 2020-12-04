@@ -8,6 +8,7 @@ using namespace std;
 int main() {
     DWORD cNumRead, i;
     INPUT_RECORD irInBuf[128];
+    setlocale(LC_ALL,"");
 
     refresh();  // Show folder
     while (true) {  // MAIN EVENT LOOP
